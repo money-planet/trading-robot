@@ -293,7 +293,7 @@ class WebSocketListener(object):
         self.listenTime = time.time()
         self.ws = None
         self.streamName = streamName
-        self.cache = None
+        self.cache = None   # k线数据
         self.onMessageTime = time.time()
 
     def on_message(self, ws, message):
