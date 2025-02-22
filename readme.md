@@ -14,13 +14,7 @@
 
 # 行情数据获取
 
-## 遇到的开发大坑，卡了很久的进度
-
-1. 币安的API在国内被墙了，要用代理才能请求到，websocket接口的`self.ws.run_forever(sslopt={"check_hostname": False}, http_proxy_host=proxyHost,
-http_proxy_port=proxyPort, proxy_type="http")`这一句的`proxy_type`现在是必传的参数了，不传就会报`Only http, socks4, socks5 proxy protocols are supported`错误
-2. UTC K线，Stream 名称: <symbol>@kline_<interval>，symbol必须是小写，比如`BTCUSDT`，就拿不到数据，必须`btcusdt`才行
-3. K线数据，GET /api/v3/klines，symbol必须是大写，比如`BTCUSDT`，才能拿到数据，`btcusdt`不行
-4. K线数据，GET /api/v3/klines，最大限制是1000根K线，怎么拿到更久远的历史数据呢？ 通过循环请求，分批次获取历史数据。例如，你可以根据时间范围（如每 1000 根 K 线对应的时间段）逐步请求数据，然后将数据拼接起来。
+## 币安
 
 用的是币安的接口，币安API：
 https://www.binance.com/zh-CN/binance-api
@@ -28,9 +22,15 @@ https://www.binance.com/zh-CN/binance-api
 币安现货API的websocket接口：
 https://developers.binance.com/docs/zh-CN/binance-spot-api-docs/web-socket-streams
 
-比较常用的接口：
+币安现货API的http接口：
+https://developers.binance.com/docs/zh-CN/binance-spot-api-docs/rest-api/general-api-information
 
-全市场所有Symbol的精简Ticker：!miniTicker@arr
+### 比较常用的websocket接口：
+
+1. 全市场所有Symbol的精简Ticker：`!miniTicker@arr`
+
+主要用于获取所有交易对，刚扫了一下目前有272个，如果有更简单的接口，可以替换掉这个。如果不需要跟踪新币和下架的币的话，这个接口每天调用一次即可
+```commandline
 {
     "e": "24hrMiniTicker",  // 事件类型
     "E": 1672515782136,     // 事件时间
@@ -42,9 +42,12 @@ https://developers.binance.com/docs/zh-CN/binance-spot-api-docs/web-socket-strea
     "v": "10000",           // 成交量
     "q": "18"               // 成交额
 }
-主要用于获取所有交易对，刚扫了一下目前有272个，如果有更简单的接口，可以替换掉这个。如果不需要跟踪新币和下架的币的话，这个接口每天调用一次即可
+```
 
-UTC K线：<symbol>@kline_<interval>
+2. UTC K线：`<symbol>@kline_<interval>`
+
+只能获取当前k线数据，不能获取历史k线数据，如果想获取历史k线数据，要用HTTP接口
+```commandline
 {
   "e": "kline",          // 事件类型
   "E": 1672515782136,    // 事件时间
@@ -69,4 +72,36 @@ UTC K线：<symbol>@kline_<interval>
     "B": "123456"        // 忽略此参数
   }
 }
+```
+
+### 比较常用的http接口
+
+1. 历史k线数据：`GET /api/v3/klines`
+
+```commandline
+[
+  [
+    1499040000000,      // 开盘时间
+    "0.01634790",       // 开盘价
+    "0.80000000",       // 最高价
+    "0.01575800",       // 最低价
+    "0.01577100",       // 收盘价(当前K线未结束的即为最新价)
+    "148976.11427815",  // 成交量
+    1499644799999,      // 收盘时间
+    "2434.19055334",    // 成交额
+    308,                // 成交笔数
+    "1756.87402397",    // 主动买入成交量
+    "28.46694368",      // 主动买入成交额
+    "17928899.62484339" // 请忽略该参数
+  ]
+]
+```
+
+### 遇到的开发大坑，卡了很久的进度
+
+1. 币安的API在国内被墙了，要用代理才能请求到，websocket接口的`self.ws.run_forever(sslopt={"check_hostname": False}, http_proxy_host=proxyHost,
+http_proxy_port=proxyPort, proxy_type="http")`这一句的`proxy_type`现在是必传的参数了，不传就会报`Only http, socks4, socks5 proxy protocols are supported`错误
+2. UTC K线，Stream 名称: <symbol>@kline_<interval>，symbol必须是小写，比如`BTCUSDT`，就拿不到数据，必须`btcusdt`才行
+3. K线数据，GET /api/v3/klines，symbol必须是大写，比如`BTCUSDT`，才能拿到数据，`btcusdt`不行
+4. K线数据，GET /api/v3/klines，最大限制是1000根K线，怎么拿到更久远的历史数据呢？ 通过循环请求，分批次获取历史数据。例如，你可以根据时间范围（如每 1000 根 K 线对应的时间段）逐步请求数据，然后将数据拼接起来。可以通过设置 startTime 和 endTime 参数，分批次请求数据，这两个参数都是时间戳。
 
